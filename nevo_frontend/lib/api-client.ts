@@ -541,14 +541,6 @@ export async function fetchCreatorPools(publicKey: string): Promise<ApiPool[]> {
   );
 }
 
-export async function donate(
-  poolId: number,
-  amount: string,
-  tokenAddress: string
-): Promise<void> {
-  return apiClient.post('/donations', { poolId, amount, tokenAddress });
-}
-
 export async function closePool(
   poolId: string | number
 ): Promise<{ unsignedXdr: string }> {
