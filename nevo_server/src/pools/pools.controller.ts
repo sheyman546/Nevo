@@ -1,14 +1,21 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
   Get,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { PoolsService } from './pools.service';
+import { ContractService } from '../contract/contract.service';
+import { StellarAuthGuard } from '../auth/stellar-auth.guard';
 
 export interface CreatePoolDto {
   contractPoolId: string;
@@ -30,9 +37,22 @@ export interface WithdrawDto {
   requesterWallet: string;
 }
 
+export interface DonateDto {
+  amount: number;
+  tokenAddress: string;
+}
+
+interface JwtPayload {
+  sub: string;
+  publicKey: string;
+}
+
 @Controller('pools')
 export class PoolsController {
-  constructor(private readonly poolsService: PoolsService) {}
+  constructor(
+    private readonly poolsService: PoolsService,
+    private readonly contractService: ContractService,
+  ) {}
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
@@ -60,5 +80,26 @@ export class PoolsController {
     if (pool.creatorWallet !== dto.requesterWallet)
       throw new ForbiddenException('Only the pool creator may withdraw');
     return this.poolsService.buildWithdrawTx(pool);
+  }
+
+  @UseGuards(StellarAuthGuard)
+  @Post(':id/donate')
+  async donate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DonateDto,
+    @Req() req: Request & { user: JwtPayload },
+  ) {
+    if (!Number.isInteger(dto.amount) || dto.amount <= 0) {
+      throw new BadRequestException('amount must be a positive integer');
+    }
+    const pool = await this.poolsService.findByContractId(String(id));
+    if (!pool) throw new NotFoundException('Pool not found');
+
+    const unsignedXdr = this.contractService.buildDonateTransaction(
+      req.user.publicKey,
+      id,
+      String(dto.amount),
+    );
+    return { unsignedXdr };
   }
 }

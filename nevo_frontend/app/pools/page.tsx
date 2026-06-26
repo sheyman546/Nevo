@@ -9,7 +9,6 @@ import {
   type Pool,
   type PoolStatus,
 } from '@/src/store/poolsStore';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 type SortOption = 'newest' | 'most-funded' | 'close-to-goal' | 'trending';
 
@@ -270,14 +269,10 @@ function buildDefaultFilters(pools: Pool[]): FilterState {
 
 export default function BrowsePoolsPage() {
   const { pools, loading, error, fetchPools } = usePoolsStore();
-  const hasFetched = useRef(false);
-
   useEffect(() => {
-    if (!hasFetched.current) {
-      fetchPools();
-      hasFetched.current = true;
-    }
+    fetchPools();
   }, [fetchPools]);
+
   const bounds = useMemo(() => getBounds(pools), [pools]);
   const categories = useMemo(
     () => Array.from(new Set(pools.map((pool) => pool.category))).sort(),
@@ -476,14 +471,14 @@ export default function BrowsePoolsPage() {
     );
   }
 
-  if (loading && pools.length === 0) {
+  if (loading) {
     return (
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-10">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <Skeleton variant="text" lines={2} className="w-64" />
         </div>
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} variant="card" />
           ))}
         </div>
